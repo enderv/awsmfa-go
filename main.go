@@ -1,20 +1,21 @@
 package main
 
 import (
+	"bufio"
 	"errors"
 	"flag"
 	"fmt"
 	"log"
+	"os"
 	"os/user"
 	"path/filepath"
-	"syscall"
+	"strings"
 
 	"github.com/alyu/configparser"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/iam"
 	"github.com/aws/aws-sdk-go/service/sts"
-	"golang.org/x/crypto/ssh/terminal"
 )
 
 func main() {
@@ -50,12 +51,13 @@ func main() {
 func getMFACode() (string, error) {
 	var mfa string
 	fmt.Print("Enter MFA Token: ")
-	mfaArray, err := terminal.ReadPassword(int(syscall.Stdin))
+	reader := bufio.NewReader(os.Stdin)
+	mfa, err := reader.ReadString('\n')
 	if err != nil {
 		return mfa, errors.New("failed to get token")
 	}
-	mfa = string(mfaArray)
-	return mfa, nil
+	fmt.Println(mfa)
+	return strings.TrimSpace(mfa), nil
 }
 
 //CreateSession Creates AWS Session with specified profile
