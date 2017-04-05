@@ -56,7 +56,6 @@ func getMFACode() (string, error) {
 	if err != nil {
 		return mfa, errors.New("failed to get token")
 	}
-	fmt.Println(mfa)
 	return strings.TrimSpace(mfa), nil
 }
 
