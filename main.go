@@ -38,6 +38,11 @@ func main() {
 	}
 	sess := CreateSession(sourceProfile)
 	user, err := getUserMFA(sess)
+	if err != nil {
+		fmt.Println(err.Error())
+		return
+	}
+
 	//Get MFA Code
 	mfa, err := getMFACode()
 	if err != nil {
@@ -95,6 +100,11 @@ func getUserMFA(sess *session.Session) (*string, error) {
 		fmt.Println(err.Error())
 		return newToken, errors.New("failed to Fetch User")
 	}
+
+	if len(mfaresp.MFADevices) == 0 {
+		return nil, errors.New("unable to find a MFA device for this identity")
+	}
+
 	return mfaresp.MFADevices[0].SerialNumber, nil
 }
 
