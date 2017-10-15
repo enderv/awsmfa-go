@@ -52,13 +52,11 @@ func main() {
 		fmt.Println(err.Error())
 		return
 	}
-	tempCreds, err := getSTSCredentials(sess, mfa, duration, user)
-	if err != nil {
-		fmt.Println(err.Error())
-		return
-	}
-	writeNewProfile(credFile, targetProfile, sourceProfile, tempCreds)
 
+	tempCreds := getSTSCredentials(sess, mfa, duration, user)
+	if tempCreds != nil {
+		writeNewProfile(credFile, targetProfile, sourceProfile, tempCreds)
+	}
 	if *rotateKeys {
 		newKeys, err := rotateCredentialKeys(sess)
 		if err != nil {
@@ -188,7 +186,7 @@ func checkProfileExists(credFile *string, profileName *string) (bool, error) {
 	return true, nil
 }
 
-func getSTSCredentials(sess *session.Session, tokenCode string, duration *int64, device *string) (*sts.GetSessionTokenOutput, error) {
+func getSTSCredentials(sess *session.Session, tokenCode string, duration *int64, device *string) *sts.GetSessionTokenOutput {
 	svc := sts.New(sess)
 	params := &sts.GetSessionTokenInput{
 		DurationSeconds: aws.Int64(*duration),
@@ -198,9 +196,10 @@ func getSTSCredentials(sess *session.Session, tokenCode string, duration *int64,
 	resp, err := svc.GetSessionToken(params)
 
 	if err != nil {
-		return nil, err
+		fmt.Println(err.Error())
+		return nil
 	}
-	return resp, nil
+	return resp
 }
 
 func rotateCredentialKeys(sess *session.Session) (*iam.CreateAccessKeyOutput, error) {
