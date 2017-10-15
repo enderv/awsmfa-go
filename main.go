@@ -39,7 +39,6 @@ func main() {
 		return
 	}
 	sess := CreateSession(sourceProfile)
-
 	user, err := getUserMFA(sess)
 	if err != nil {
 		fmt.Println(err.Error())
