@@ -49,8 +49,11 @@ func main() {
 		fmt.Println(err.Error())
 		return
 	}
+
 	tempCreds := getSTSCredentials(sess, mfa, duration, user)
-	writeNewProfile(credFile, targetProfile, sourceProfile, tempCreds)
+	if tempCreds != nil {
+		writeNewProfile(credFile, targetProfile, sourceProfile, tempCreds)
+	}
 }
 
 func getMFACode() (string, error) {
