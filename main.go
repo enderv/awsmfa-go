@@ -22,11 +22,13 @@ func main() {
 
 	sourceProfile := flag.String("i", "default", "Source Profile")
 	targetProfile := flag.String("t", "default", "Destination Profile")
+	rotateKeys := flag.Bool("rotate-identity-keys", false, "Boolean flag to rotate keys")
+	overwrite := flag.Bool("o", false, "Boolean flag to overwrite profile")
 	credFile := flag.String("c", filepath.Join(getCredentialPath(), ".aws", "credentials"), "Full path to credentials file")
 	duration := flag.Int64("d", 28800, "Token Duration")
 	flag.Parse()
 
-	if sourceProfile == targetProfile {
+	if sourceProfile == targetProfile && !*overwrite {
 		fmt.Println("Source equals target and will overwrite it you probably don't want to do this")
 		return
 	}
@@ -53,6 +55,14 @@ func main() {
 	tempCreds := getSTSCredentials(sess, mfa, duration, user)
 	if tempCreds != nil {
 		writeNewProfile(credFile, targetProfile, sourceProfile, tempCreds)
+	}
+	if *rotateKeys {
+		newKeys, err := rotateCredentialKeys(sess)
+		if err != nil {
+			fmt.Println(err.Error())
+			return
+		}
+		writeNewKeys(credFile, sourceProfile, newKeys)
 	}
 }
 
@@ -138,6 +148,23 @@ func writeNewProfile(credFile *string, profileName *string, sourceProfile *strin
 	}
 }
 
+func writeNewKeys(credFile *string, profileName *string, newKeys *iam.CreateAccessKeyOutput) {
+	config, err := configparser.Read(*credFile)
+	sourceSection, err := config.Section(*profileName)
+	region := sourceSection.ValueOf("region")
+	section, err := config.Section(*profileName)
+	if err != nil {
+		section = config.NewSection(*profileName)
+	}
+	section.Add("region", region)
+	section.Add("aws_access_key_id", *newKeys.AccessKey.AccessKeyId)
+	section.Add("aws_secret_access_key", *newKeys.AccessKey.SecretAccessKey)
+	err = configparser.Save(config, *credFile)
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
 func checkProfileExists(credFile *string, profileName *string) (bool, error) {
 	config, err := configparser.Read(*credFile)
 	if err != nil {
@@ -168,10 +195,45 @@ func getSTSCredentials(sess *session.Session, tokenCode string, duration *int64,
 	resp, err := svc.GetSessionToken(params)
 
 	if err != nil {
-		// Print the error, cast err to awserr.Error to get the Code and
-		// Message from an error.
 		fmt.Println(err.Error())
 		return nil
 	}
 	return resp
+}
+
+func rotateCredentialKeys(sess *session.Session) (*iam.CreateAccessKeyOutput, error) {
+	svc := iam.New(sess)
+	input := &iam.ListAccessKeysInput{}
+	var currentAccessKey *iam.AccessKeyMetadata
+	var createResult *iam.CreateAccessKeyOutput
+	result, err := svc.ListAccessKeys(input)
+	if err != nil {
+		fmt.Println(err.Error())
+		return nil, err
+	}
+	currentCreds, err := sess.Config.Credentials.Get()
+	for _, accessKey := range result.AccessKeyMetadata {
+		if *accessKey.AccessKeyId == currentCreds.AccessKeyID {
+			currentAccessKey = accessKey
+		}
+	}
+	if currentAccessKey != nil {
+		deleteKeyInput := &iam.DeleteAccessKeyInput{
+			AccessKeyId: currentAccessKey.AccessKeyId,
+		}
+		_, err := svc.DeleteAccessKey(deleteKeyInput)
+		if err != nil {
+			fmt.Println(err.Error())
+			return nil, err
+		}
+		createKeyInput := &iam.CreateAccessKeyInput{}
+		createResult, err = svc.CreateAccessKey(createKeyInput)
+		if err != nil {
+			fmt.Println(err.Error())
+			return nil, err
+		}
+		fmt.Printf("Replacing %s with %s", currentCreds.AccessKeyID, *createResult.AccessKey.AccessKeyId)
+		return createResult, nil
+	}
+	return nil, errors.New("unable to find a current access key for this Identity")
 }
