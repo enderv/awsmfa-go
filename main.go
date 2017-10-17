@@ -62,7 +62,7 @@ func main() {
 	}
 
 	if forceRotate || *rotateKeys {
-		fmt.Print("rotateing")
+		fmt.Print("Rotating Keys...\n")
 		newKeys, err := rotateCredentialKeys(sess)
 		if err != nil {
 			fmt.Println(err.Error())
