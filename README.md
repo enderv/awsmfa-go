@@ -28,6 +28,11 @@ Currently supported
         Destination Profile (default "default")
 ```
 
+#### Environment Variables
+```
+AWSMFA_ALWAYS_ROTATE
+      If set to "true" (or any case variant of), awsmfa-go will always rotate access keys after every run.
+```
 
 ### Development
 
