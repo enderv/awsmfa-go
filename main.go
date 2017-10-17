@@ -72,6 +72,8 @@ func main() {
 	}
 }
 
+// getMFACode prompts for MFA Token input
+// It returns the value as a string and any error
 func getMFACode() (string, error) {
 	var mfa string
 	fmt.Print("Enter MFA Token: ")
@@ -83,7 +85,7 @@ func getMFACode() (string, error) {
 	return strings.TrimSpace(mfa), nil
 }
 
-//CreateSession Creates AWS Session with specified profile
+// CreateSession Creates AWS Session with specified profile
 func CreateSession(profileName *string) *session.Session {
 	profileNameValue := *profileName
 	sess := session.Must(session.NewSessionWithOptions(session.Options{
@@ -92,6 +94,8 @@ func CreateSession(profileName *string) *session.Session {
 	return sess
 }
 
+// getUserMFA takes a session
+// It returns the users MFA Serial and any errors
 func getUserMFA(sess *session.Session) (*string, error) {
 	var newToken *string
 
@@ -127,6 +131,7 @@ func getUserMFA(sess *session.Session) (*string, error) {
 	return mfaresp.MFADevices[0].SerialNumber, nil
 }
 
+// getCredentialPath returns the users home directory path as a string
 func getCredentialPath() string {
 	usr, err := user.Current()
 	if err != nil {
@@ -135,6 +140,8 @@ func getCredentialPath() string {
 	return usr.HomeDir
 }
 
+// writeNewProfile writes out the new profile keys in the credential file
+// Returns nothing
 func writeNewProfile(credFile *string, profileName *string, sourceProfile *string, sessionDetails *sts.GetSessionTokenOutput) {
 	config, err := configparser.Read(*credFile)
 	sourceSection, err := config.Section(*sourceProfile)
@@ -158,6 +165,8 @@ func writeNewProfile(credFile *string, profileName *string, sourceProfile *strin
 	}
 }
 
+// writeNewKeys replaces old aws keys in the credentials file
+// Returns nothing
 func writeNewKeys(credFile *string, profileName *string, newKeys *iam.CreateAccessKeyOutput) {
 	config, err := configparser.Read(*credFile)
 	sourceSection, err := config.Section(*profileName)
@@ -175,6 +184,8 @@ func writeNewKeys(credFile *string, profileName *string, newKeys *iam.CreateAcce
 	}
 }
 
+// checkProfileExists takes path to the credentials file and profile name to search for
+// Returns bool and any errors
 func checkProfileExists(credFile *string, profileName *string) (bool, error) {
 	config, err := configparser.Read(*credFile)
 	if err != nil {
@@ -195,6 +206,8 @@ func checkProfileExists(credFile *string, profileName *string) (bool, error) {
 	return true, nil
 }
 
+// getSTSCredentials takes session, users inputted MFA token, duration, and device serial
+// Returns GetSessionTokenOutput
 func getSTSCredentials(sess *session.Session, tokenCode string, duration *int64, device *string) *sts.GetSessionTokenOutput {
 	svc := sts.New(sess)
 	params := &sts.GetSessionTokenInput{
@@ -211,6 +224,8 @@ func getSTSCredentials(sess *session.Session, tokenCode string, duration *int64,
 	return resp
 }
 
+// rotateCredentialKeys takes session and will delete users existing key and create a new one
+// Returns the new credentials
 func rotateCredentialKeys(sess *session.Session) (*iam.CreateAccessKeyOutput, error) {
 	svc := iam.New(sess)
 	input := &iam.ListAccessKeysInput{}
