@@ -28,10 +28,14 @@ func main() {
 	duration := flag.Int64("d", 28800, "Token Duration")
 	flag.Parse()
 
+	// If AWSMFA_ALWAYS_ROTATE is set to true, always rotate the key.
+	forceRotate := strings.EqualFold(os.Getenv("AWSMFA_ALWAYS_ROTATE"), "true")
+
 	if sourceProfile == targetProfile && !*overwrite {
 		fmt.Println("Source equals target and will overwrite it you probably don't want to do this")
 		return
 	}
+
 	//Get Current Credentials
 	exists, err := checkProfileExists(credFile, sourceProfile)
 	if err != nil || !exists {
@@ -56,7 +60,9 @@ func main() {
 	if tempCreds != nil {
 		writeNewProfile(credFile, targetProfile, sourceProfile, tempCreds)
 	}
-	if *rotateKeys {
+
+	if forceRotate || *rotateKeys {
+		fmt.Print("Rotating Keys...\n")
 		newKeys, err := rotateCredentialKeys(sess)
 		if err != nil {
 			fmt.Println(err.Error())
