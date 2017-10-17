@@ -137,7 +137,11 @@ func writeNewProfile(credFile *string, profileName *string, sourceProfile *strin
 	if err != nil {
 		section = config.NewSection(*profileName)
 	}
-	section.Add("region", region)
+
+	if region != "" {
+		section.Add("region", region)
+	}
+
 	section.Add("aws_access_key_id", *sessionDetails.Credentials.AccessKeyId)
 	section.Add("aws_secret_access_key", *sessionDetails.Credentials.SecretAccessKey)
 	section.Add("aws_session_token", *sessionDetails.Credentials.SessionToken)
