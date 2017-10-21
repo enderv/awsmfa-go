@@ -24,6 +24,7 @@ func main() {
 	targetProfile := flag.String("t", "default", "Destination Profile")
 	rotateKeys := flag.Bool("rotate-identity-keys", false, "Boolean flag to rotate keys")
 	overwrite := flag.Bool("o", false, "Boolean flag to overwrite profile")
+	printOut := flag.Bool("env", false, "Boolean flag to print commands to set environment variables")
 	credFile := flag.String("c", filepath.Join(getCredentialPath(), ".aws", "credentials"), "Full path to credentials file")
 	duration := flag.Int64("d", 28800, "Token Duration")
 	flag.Parse()
@@ -69,6 +70,10 @@ func main() {
 			return
 		}
 		writeNewKeys(credFile, sourceProfile, newKeys)
+	}
+
+	if *printOut {
+		printNewProfile(tempCreds)
 	}
 }
 
@@ -163,6 +168,15 @@ func writeNewProfile(credFile *string, profileName *string, sourceProfile *strin
 	if err != nil {
 		log.Fatal(err)
 	}
+}
+
+// printNewProfile prints out the commands to set the credentials as env variables
+// Returns nothing
+func printNewProfile(sessionDetails *sts.GetSessionTokenOutput) {
+	fmt.Printf("AWS_ACCESS_KEY_ID=%s; export AWS_ACCESS_KEY_ID;", *sessionDetails.Credentials.AccessKeyId)
+	fmt.Printf("AWS_SECRET_ACCESS_KEY=%s; export AWS_SECRET_ACCESS_KEY;", *sessionDetails.Credentials.SecretAccessKey)
+	fmt.Printf("AWS_SESSION_TOKEN=%s; export AWS_SESSION_TOKEN;", *sessionDetails.Credentials.SessionToken)
+	fmt.Printf("AWS_SECURITY_TOKEN=%s; export AWS_SECURITY_TOKEN;", *sessionDetails.Credentials.SessionToken)
 }
 
 // writeNewKeys replaces old aws keys in the credentials file
