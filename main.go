@@ -22,8 +22,8 @@ func main() {
 
 	sourceProfile := flag.String("i", "default", "Source Profile")
 	targetProfile := flag.String("t", "default", "Destination Profile")
-	rotateKeys := flag.Bool("rotate-identity-keys", false, "Boolean flag to rotate keys")
-	overwrite := flag.Bool("o", false, "Boolean flag to overwrite profile")
+	rotateKeys := flag.Bool("rotate-identity-keys", false, "Boolean flag to rotate keys of the source profile when fetching new credentials")
+	overwrite := flag.Bool("o", false, "Boolean flag to overwrite profile if this is not set you can not have same source and target profile")
 	printOut := flag.Bool("env", false, "Boolean flag to print commands to set environment variables")
 	credFile := flag.String("c", filepath.Join(getCredentialPath(), ".aws", "credentials"), "Full path to credentials file")
 	duration := flag.Int64("d", 28800, "Token Duration")

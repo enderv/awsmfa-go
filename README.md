@@ -15,17 +15,17 @@ Enter MFA Token:
 #### Command line Arguments
 Currently supported
 ```
-  -c string
-        Full path to credentials file (default "C:\\Users\\chris\\.aws\\credentials")
+  c string
+        Full path to credentials file (default "<Users Home>\.aws\credentials")
   -d int
         Token Duration (default 28800)
   -env
         Boolean flag to print commands to set environment variables
   -i string
         Source Profile (default "default")
-  -o    Boolean flag to overwrite profile
+  -o    Boolean flag to overwrite profile if this is not set you can not have same source and target profile
   -rotate-identity-keys
-        Boolean flag to rotate keys
+        Boolean flag to rotate keys of the source profile when fetching new credentials
   -t string
         Destination Profile (default "default")
 ```
