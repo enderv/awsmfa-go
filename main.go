@@ -73,7 +73,9 @@ func main() {
 	}
 
 	if *printOut {
-		printNewProfile(tempCreds)
+		if tempCreds != nil {
+			printNewProfile(tempCreds)
+		}
 	}
 }
 
