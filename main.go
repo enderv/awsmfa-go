@@ -19,11 +19,12 @@ import (
 )
 
 func main() {
-
 	sourceProfile := flag.String("i", "default", "Source Profile")
 	targetProfile := flag.String("t", "default", "Destination Profile")
-	rotateKeys := flag.Bool("rotate-identity-keys", false, "Boolean flag to rotate keys")
-	overwrite := flag.Bool("o", false, "Boolean flag to overwrite profile")
+	rotateKeys := flag.Bool("rotate-identity-keys", false, "Boolean flag to rotate keys of the source profile when fetching new credentials")
+	overwrite := flag.Bool("o", false, "Boolean flag to overwrite profile if this is not set you can not have same source and target profile")
+	printOut := flag.Bool("env", false, "Flag to print commands to set environment variables")
+	printFormat := flag.String("format", "bash", "Env OS Printout format, possible values are cmd, bash, pwshell")
 	credFile := flag.String("c", filepath.Join(getCredentialPath(), ".aws", "credentials"), "Full path to credentials file")
 	duration := flag.Int64("d", 28800, "Token Duration")
 	flag.Parse()
@@ -69,6 +70,12 @@ func main() {
 			return
 		}
 		writeNewKeys(credFile, sourceProfile, newKeys)
+	}
+
+	if *printOut {
+		if tempCreds != nil {
+			printNewProfile(tempCreds, strings.ToLower(*printFormat))
+		}
 	}
 }
 
@@ -162,6 +169,30 @@ func writeNewProfile(credFile *string, profileName *string, sourceProfile *strin
 	err = configparser.Save(config, *credFile)
 	if err != nil {
 		log.Fatal(err)
+	}
+}
+
+// printNewProfile prints out the commands to set the credentials as env variables
+// Returns nothing
+func printNewProfile(sessionDetails *sts.GetSessionTokenOutput, format string) {
+	switch format {
+	case "bash":
+		fmt.Printf("AWS_ACCESS_KEY_ID=%s; export AWS_ACCESS_KEY_ID;", *sessionDetails.Credentials.AccessKeyId)
+		fmt.Printf("AWS_SECRET_ACCESS_KEY=%s; export AWS_SECRET_ACCESS_KEY;", *sessionDetails.Credentials.SecretAccessKey)
+		fmt.Printf("AWS_SESSION_TOKEN=%s; export AWS_SESSION_TOKEN;", *sessionDetails.Credentials.SessionToken)
+		fmt.Printf("AWS_SECURITY_TOKEN=%s; export AWS_SECURITY_TOKEN;", *sessionDetails.Credentials.SessionToken)
+	case "cmd":
+		fmt.Printf("setx AWS_ACCESS_KEY_ID=\"%s\";", *sessionDetails.Credentials.AccessKeyId)
+		fmt.Printf("setx AWS_SECRET_ACCESS_KEY=\"%s\";", *sessionDetails.Credentials.SecretAccessKey)
+		fmt.Printf("setx AWS_SESSION_TOKEN=\"%s\";", *sessionDetails.Credentials.SessionToken)
+		fmt.Printf("setx AWS_SECURITY_TOKEN=\"%s\";", *sessionDetails.Credentials.SessionToken)
+	case "pwshell":
+		fmt.Printf("[Environment]::SetEnvironmentVariable(\"AWS_ACCESS_KEY_ID\", \"%s\", \"User\");", *sessionDetails.Credentials.AccessKeyId)
+		fmt.Printf("[Environment]::SetEnvironmentVariable(\"AWS_SECRET_ACCESS_KEY\", \"%s\", \"User\");", *sessionDetails.Credentials.SecretAccessKey)
+		fmt.Printf("[Environment]::SetEnvironmentVariable(\"AWS_SESSION_TOKEN\", \"%s\", \"User\");", *sessionDetails.Credentials.SessionToken)
+		fmt.Printf("[Environment]::SetEnvironmentVariable(\"AWS_SECURITY_TOKEN\", \"%s\", \"User\");", *sessionDetails.Credentials.SessionToken)
+	default:
+		fmt.Printf("%s is an unrecognized option", format)
 	}
 }
 
