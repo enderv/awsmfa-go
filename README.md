@@ -26,8 +26,12 @@ Currently supported
   -i string
         Source Profile (default "default")
   -o    Boolean flag to overwrite profile if this is not set you can not have same source and target profile
+  -role-to-assume string
+        Full ARN of Role To Assume
   -rotate-identity-keys
         Boolean flag to rotate keys of the source profile when fetching new credentials
+  -sessionName string
+        Name for session when assuming role (default "awsmfa2017-10-24")
   -t string
         Destination Profile (default "default")
 ```

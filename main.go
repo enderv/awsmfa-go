@@ -10,6 +10,7 @@ import (
 	"os/user"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/alyu/configparser"
 	"github.com/aws/aws-sdk-go/aws"
@@ -18,6 +19,13 @@ import (
 	"github.com/aws/aws-sdk-go/service/sts"
 )
 
+type credentialResult struct {
+	AccessKeyId     string
+	SecretAccessKey string
+	Expiration      string
+	SessionToken    string
+}
+
 func main() {
 	sourceProfile := flag.String("i", "default", "Source Profile")
 	targetProfile := flag.String("t", "default", "Destination Profile")
@@ -25,6 +33,8 @@ func main() {
 	overwrite := flag.Bool("o", false, "Boolean flag to overwrite profile if this is not set you can not have same source and target profile")
 	printOut := flag.Bool("env", false, "Flag to print commands to set environment variables")
 	printFormat := flag.String("format", "bash", "Env OS Printout format, possible values are cmd, bash, pwshell")
+	roleToAssume := flag.String("role-to-assume", "", "Full ARN of Role To Assume")
+	sessionName := flag.String("sessionName", "awsmfa"+time.Now().Format("2006-01-02"), "Name for session when assuming role")
 	credFile := flag.String("c", filepath.Join(getCredentialPath(), ".aws", "credentials"), "Full path to credentials file")
 	duration := flag.Int64("d", 28800, "Token Duration")
 	flag.Parse()
@@ -44,7 +54,7 @@ func main() {
 		return
 	}
 	sess := CreateSession(sourceProfile)
-	user, err := getUserMFA(sess)
+	userSerial, err := getUserMFA(sess)
 	if err != nil {
 		fmt.Println(err.Error())
 		return
@@ -56,10 +66,15 @@ func main() {
 		fmt.Println(err.Error())
 		return
 	}
+	var tempCreds *credentialResult
+	if *roleToAssume != "" {
+		tempCreds = getRoleCredentials(sess, mfa, duration, userSerial, roleToAssume, sessionName)
+	} else {
+		tempCreds = getSTSCredentials(sess, mfa, duration, userSerial)
+	}
 
-	tempCreds := getSTSCredentials(sess, mfa, duration, user)
 	if tempCreds != nil {
-		writeNewProfile(credFile, targetProfile, sourceProfile, tempCreds)
+		writeNewProfile(credFile, targetProfile, sourceProfile, *tempCreds)
 	}
 
 	if forceRotate || *rotateKeys {
@@ -74,8 +89,12 @@ func main() {
 
 	if *printOut {
 		if tempCreds != nil {
-			printNewProfile(tempCreds, strings.ToLower(*printFormat))
+			printNewProfile(*tempCreds, strings.ToLower(*printFormat))
 		}
+	}
+
+	if tempCreds != nil {
+		fmt.Printf("Credentials expire at %s", tempCreds.Expiration)
 	}
 }
 
@@ -149,7 +168,7 @@ func getCredentialPath() string {
 
 // writeNewProfile writes out the new profile keys in the credential file
 // Returns nothing
-func writeNewProfile(credFile *string, profileName *string, sourceProfile *string, sessionDetails *sts.GetSessionTokenOutput) {
+func writeNewProfile(credFile *string, profileName *string, sourceProfile *string, sessionDetails credentialResult) {
 	config, err := configparser.Read(*credFile)
 	sourceSection, err := config.Section(*sourceProfile)
 	region := sourceSection.ValueOf("region")
@@ -162,10 +181,10 @@ func writeNewProfile(credFile *string, profileName *string, sourceProfile *strin
 		section.Add("region", region)
 	}
 
-	section.Add("aws_access_key_id", *sessionDetails.Credentials.AccessKeyId)
-	section.Add("aws_secret_access_key", *sessionDetails.Credentials.SecretAccessKey)
-	section.Add("aws_session_token", *sessionDetails.Credentials.SessionToken)
-	section.Add("awsmfa_expiration", (*sessionDetails.Credentials.Expiration).String())
+	section.Add("aws_access_key_id", sessionDetails.AccessKeyId)
+	section.Add("aws_secret_access_key", sessionDetails.SecretAccessKey)
+	section.Add("aws_session_token", sessionDetails.SessionToken)
+	section.Add("awsmfa_expiration", sessionDetails.Expiration)
 	err = configparser.Save(config, *credFile)
 	if err != nil {
 		log.Fatal(err)
@@ -174,23 +193,23 @@ func writeNewProfile(credFile *string, profileName *string, sourceProfile *strin
 
 // printNewProfile prints out the commands to set the credentials as env variables
 // Returns nothing
-func printNewProfile(sessionDetails *sts.GetSessionTokenOutput, format string) {
+func printNewProfile(sessionDetails credentialResult, format string) {
 	switch format {
 	case "bash":
-		fmt.Printf("AWS_ACCESS_KEY_ID=%s; export AWS_ACCESS_KEY_ID;", *sessionDetails.Credentials.AccessKeyId)
-		fmt.Printf("AWS_SECRET_ACCESS_KEY=%s; export AWS_SECRET_ACCESS_KEY;", *sessionDetails.Credentials.SecretAccessKey)
-		fmt.Printf("AWS_SESSION_TOKEN=%s; export AWS_SESSION_TOKEN;", *sessionDetails.Credentials.SessionToken)
-		fmt.Printf("AWS_SECURITY_TOKEN=%s; export AWS_SECURITY_TOKEN;", *sessionDetails.Credentials.SessionToken)
+		fmt.Printf("AWS_ACCESS_KEY_ID=%s; export AWS_ACCESS_KEY_ID;", sessionDetails.AccessKeyId)
+		fmt.Printf("AWS_SECRET_ACCESS_KEY=%s; export AWS_SECRET_ACCESS_KEY;", sessionDetails.SecretAccessKey)
+		fmt.Printf("AWS_SESSION_TOKEN=%s; export AWS_SESSION_TOKEN;", sessionDetails.SessionToken)
+		fmt.Printf("AWS_SECURITY_TOKEN=%s; export AWS_SECURITY_TOKEN;", sessionDetails.SessionToken)
 	case "cmd":
-		fmt.Printf("setx AWS_ACCESS_KEY_ID=\"%s\";", *sessionDetails.Credentials.AccessKeyId)
-		fmt.Printf("setx AWS_SECRET_ACCESS_KEY=\"%s\";", *sessionDetails.Credentials.SecretAccessKey)
-		fmt.Printf("setx AWS_SESSION_TOKEN=\"%s\";", *sessionDetails.Credentials.SessionToken)
-		fmt.Printf("setx AWS_SECURITY_TOKEN=\"%s\";", *sessionDetails.Credentials.SessionToken)
+		fmt.Printf("setx AWS_ACCESS_KEY_ID=\"%s\";", sessionDetails.AccessKeyId)
+		fmt.Printf("setx AWS_SECRET_ACCESS_KEY=\"%s\";", sessionDetails.SecretAccessKey)
+		fmt.Printf("setx AWS_SESSION_TOKEN=\"%s\";", sessionDetails.SessionToken)
+		fmt.Printf("setx AWS_SECURITY_TOKEN=\"%s\";", sessionDetails.SessionToken)
 	case "pwshell":
-		fmt.Printf("[Environment]::SetEnvironmentVariable(\"AWS_ACCESS_KEY_ID\", \"%s\", \"User\");", *sessionDetails.Credentials.AccessKeyId)
-		fmt.Printf("[Environment]::SetEnvironmentVariable(\"AWS_SECRET_ACCESS_KEY\", \"%s\", \"User\");", *sessionDetails.Credentials.SecretAccessKey)
-		fmt.Printf("[Environment]::SetEnvironmentVariable(\"AWS_SESSION_TOKEN\", \"%s\", \"User\");", *sessionDetails.Credentials.SessionToken)
-		fmt.Printf("[Environment]::SetEnvironmentVariable(\"AWS_SECURITY_TOKEN\", \"%s\", \"User\");", *sessionDetails.Credentials.SessionToken)
+		fmt.Printf("[Environment]::SetEnvironmentVariable(\"AWS_ACCESS_KEY_ID\", \"%s\", \"User\");", sessionDetails.AccessKeyId)
+		fmt.Printf("[Environment]::SetEnvironmentVariable(\"AWS_SECRET_ACCESS_KEY\", \"%s\", \"User\");", sessionDetails.SecretAccessKey)
+		fmt.Printf("[Environment]::SetEnvironmentVariable(\"AWS_SESSION_TOKEN\", \"%s\", \"User\");", sessionDetails.SessionToken)
+		fmt.Printf("[Environment]::SetEnvironmentVariable(\"AWS_SECURITY_TOKEN\", \"%s\", \"User\");", sessionDetails.SessionToken)
 	default:
 		fmt.Printf("%s is an unrecognized option", format)
 	}
@@ -239,7 +258,7 @@ func checkProfileExists(credFile *string, profileName *string) (bool, error) {
 
 // getSTSCredentials takes session, users inputted MFA token, duration, and device serial
 // Returns GetSessionTokenOutput
-func getSTSCredentials(sess *session.Session, tokenCode string, duration *int64, device *string) *sts.GetSessionTokenOutput {
+func getSTSCredentials(sess *session.Session, tokenCode string, duration *int64, device *string) *credentialResult {
 	svc := sts.New(sess)
 	params := &sts.GetSessionTokenInput{
 		DurationSeconds: aws.Int64(*duration),
@@ -252,7 +271,42 @@ func getSTSCredentials(sess *session.Session, tokenCode string, duration *int64,
 		fmt.Println(err.Error())
 		return nil
 	}
-	return resp
+	newDetails := credentialResult{
+		AccessKeyId:     *resp.Credentials.AccessKeyId,
+		SecretAccessKey: *resp.Credentials.SecretAccessKey,
+		Expiration:      (*resp.Credentials.Expiration).String(),
+		SessionToken:    *resp.Credentials.SessionToken,
+	}
+	return &newDetails
+}
+
+// getRoleCredentials takes session, users inputted MFA token, duration, and device serial, and Role To Assume
+// Returns GetSessionTokenOutput
+func getRoleCredentials(sess *session.Session, tokenCode string, duration *int64, device *string, role *string, sessionName *string) *credentialResult {
+	svc := sts.New(sess)
+	if *duration > 3600 {
+		*duration = 3600
+	}
+	params := &sts.AssumeRoleInput{
+		DurationSeconds: aws.Int64(*duration),
+		RoleArn:         aws.String(*role),
+		SerialNumber:    aws.String(*device),
+		TokenCode:       aws.String(tokenCode),
+		RoleSessionName: aws.String(*sessionName),
+	}
+	resp, err := svc.AssumeRole(params)
+
+	if err != nil {
+		fmt.Println(err.Error())
+		return nil
+	}
+	newDetails := credentialResult{
+		AccessKeyId:     *resp.Credentials.AccessKeyId,
+		SecretAccessKey: *resp.Credentials.SecretAccessKey,
+		Expiration:      (*resp.Credentials.Expiration).String(),
+		SessionToken:    *resp.Credentials.SessionToken,
+	}
+	return &newDetails
 }
 
 // rotateCredentialKeys takes session and will delete users existing key and create a new one
