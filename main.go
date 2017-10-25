@@ -10,6 +10,7 @@ import (
 	"os/user"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/alyu/configparser"
 	"github.com/aws/aws-sdk-go/aws"
@@ -33,6 +34,7 @@ func main() {
 	printOut := flag.Bool("env", false, "Flag to print commands to set environment variables")
 	printFormat := flag.String("format", "bash", "Env OS Printout format, possible values are cmd, bash, pwshell")
 	roleToAssume := flag.String("role-to-assume", "", "Full ARN of Role To Assume")
+	sessionName := flag.String("sessionName", "awsmfa"+time.Now().Format("2006-01-02"), "Name for session when assuming role")
 	credFile := flag.String("c", filepath.Join(getCredentialPath(), ".aws", "credentials"), "Full path to credentials file")
 	duration := flag.Int64("d", 28800, "Token Duration")
 	flag.Parse()
@@ -66,7 +68,7 @@ func main() {
 	}
 	var tempCreds *credentialResult
 	if *roleToAssume != "" {
-		tempCreds = getRoleCredentials(sess, mfa, duration, userSerial, roleToAssume)
+		tempCreds = getRoleCredentials(sess, mfa, duration, userSerial, roleToAssume, sessionName)
 	} else {
 		tempCreds = getSTSCredentials(sess, mfa, duration, userSerial)
 	}
@@ -280,13 +282,17 @@ func getSTSCredentials(sess *session.Session, tokenCode string, duration *int64,
 
 // getRoleCredentials takes session, users inputted MFA token, duration, and device serial, and Role To Assume
 // Returns GetSessionTokenOutput
-func getRoleCredentials(sess *session.Session, tokenCode string, duration *int64, device *string, role *string) *credentialResult {
+func getRoleCredentials(sess *session.Session, tokenCode string, duration *int64, device *string, role *string, sessionName *string) *credentialResult {
 	svc := sts.New(sess)
+	if *duration > 3600 {
+		*duration = 3600
+	}
 	params := &sts.AssumeRoleInput{
 		DurationSeconds: aws.Int64(*duration),
 		RoleArn:         aws.String(*role),
 		SerialNumber:    aws.String(*device),
 		TokenCode:       aws.String(tokenCode),
+		RoleSessionName: aws.String(*sessionName),
 	}
 	resp, err := svc.AssumeRole(params)
 
