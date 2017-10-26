@@ -1,0 +1,24 @@
+language: go
+sudo: false
+before_install:
+- go get github.com/mitchellh/gox
+install:
+- #skip
+script:
+- go get -t -v ./...
+- diff -u <(echo -n) <(gofmt -d .)
+- go test -v -race ./...
+- gox -os="linux darwin windows" -arch="amd64" -output="bin/awsmfa-go_{{.OS}}_{{.Arch}}" -ldflags "-X
+  main.Rev=`git rev-parse --short HEAD`" -verbose ./...
+deploy:
+  provider: releases
+  skip_cleanup: true
+  api_key:
+    secure: <GenerateMe>
+  file:
+    - "bin/awsmfa-go_windows_amd64.exe"
+    - "bin/awsmfa-go_linux_amd64"
+    - "bin/awsmfa-go_darwin_amd64"
+  on:
+    repo: enderv/awsmfa-go
+    tags: true
