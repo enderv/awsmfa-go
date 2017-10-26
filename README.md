@@ -1,9 +1,11 @@
 # awsmfa-go
+[![Build Status](https://travis-ci.org/enderv/awsmfa-go.svg?branch=master)](https://travis-ci.org/enderv/awsmfa-go)
 
 This is a project to handle having to use a MFA token to access AWS Resources. Assuming you have your credential file setup with profiles you can use it to generate temporary credentials with your MFA token. This is based on [this](https://github.com/dcoker/awsmfa/) great tool in python and has been reimplemented in golang so you don't have to worry about setting about virtualenvs.
 
 
 ### Installation
+Download a release and put the binary on your path.
 
 ### To Use
 Once the binary is on your systems path you can just call 
