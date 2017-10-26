@@ -14,7 +14,7 @@ deploy:
   provider: releases
   skip_cleanup: true
   api_key:
-    secure: <GenerateMe>
+    secure: fucAwAUOlk+WZt5MEztCw3qlbAjJE92j84/TEeQ7CFBlzlTgx4v3ovyvQTsorfYdpKJRQ7cyn7nLtNf/rNGn+YKwX2qa/YKgNrZfyqSbJ/N1bDHo8dAkFAsw5rk75LeaGt2IwkbfCxG/E6uJh9WgNOSQW9s1lBlKqPvOrAIyiSNSUux8bHUjIFpu+qSGkbhtckhYWGHnUukktFY83BNIMfOSJsDyJZmt1OVb5SGZn9Z4TsQnfSQzYOk37MXxw3VNhqCI54yauI1vZgj9AnNdfNdl+GoPcVzGfgbfqMfujoKLnG8CWqpW14bYRlfuK0yE07gU4I58Wgap8GawX96OrNxHkunsPJIxBiVOgaD7W0R8YETPf8Hsfy6INuJzyCOuvvzACTy9ww5M3zrzD88O8dKZw5hstTAhlYvgoejqLJMDxYYpDM2+334G4/FKoG7nojNJXKzlAdAE5cX2Wo3QxBSdW8kdu8hW22xzBCHhuL1ylcuK+iPpBC7+56ct2vJogJnoTiSctXFo6d2kV/k0elVELTB4qPW7yK+RsUdTI5/hnh4jXYebG3OB1GAoOkyU0yEs0fMsi3NyzBvbHhbVfys/GMFnpycqdJJbfZoLdzXHC6djf9M4sfzw5OgNI64iNmL4QQSi7pmpUafiS6bANsIaHuAdkTnnEs+hC/e0ks8=
   file:
     - "bin/awsmfa-go_windows_amd64.exe"
     - "bin/awsmfa-go_linux_amd64"
