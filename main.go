@@ -27,7 +27,7 @@ type credentialResult struct {
 }
 
 func main() {
-	sourceProfile := flag.String("i", "default", "Source Profile")
+	sourceProfile := flag.String("i", "identity", "Source Profile")
 	targetProfile := flag.String("t", "default", "Destination Profile")
 	rotateKeys := flag.Bool("rotate-identity-keys", false, "Boolean flag to rotate keys of the source profile when fetching new credentials")
 	overwrite := flag.Bool("o", false, "Boolean flag to overwrite profile if this is not set you can not have same source and target profile")
