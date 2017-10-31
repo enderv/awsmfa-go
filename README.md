@@ -26,7 +26,7 @@ Currently supported
   -format string
         Env Printout format if not specified default is bash, possible values are cmd, bash, pwshell (default "bash")
   -i string
-        Source Profile (default "default")
+        Source Profile (default "identity")
   -o    Boolean flag to overwrite profile if this is not set you can not have same source and target profile
   -role-to-assume string
         Full ARN of Role To Assume
