@@ -34,8 +34,11 @@ func main() {
 	printOut := flag.Bool("env", false, "Flag to print commands to set environment variables")
 	printFormat := flag.String("format", "bash", "Env OS Printout format, possible values are cmd, bash, pwshell")
 	roleToAssume := flag.String("role-to-assume", "", "Full ARN of Role To Assume")
+	useRoleConfig := flag.Bool("use-role-config", false, "Use config profile for assuming a role")
+	configProfile := flag.String("config-profile", "", "Config Profile To use for assuming role")
 	sessionName := flag.String("sessionName", "awsmfa"+time.Now().Format("2006-01-02"), "Name for session when assuming role")
 	credFile := flag.String("c", filepath.Join(getCredentialPath(), ".aws", "credentials"), "Full path to credentials file")
+	configFile := flag.String("n", filepath.Join(getCredentialPath(), ".aws", "config"), "Full path to config file")
 	duration := flag.Int64("d", 28800, "Token Duration")
 	flag.Parse()
 
@@ -45,6 +48,15 @@ func main() {
 	if sourceProfile == targetProfile && !*overwrite {
 		fmt.Println("Source equals target and will overwrite it you probably don't want to do this")
 		return
+	}
+
+	if *useRoleConfig {
+		var err error
+		sourceProfile, roleToAssume, err = getConfigProfileValues(configFile, configProfile)
+		if err != nil {
+			fmt.Println(err.Error())
+			return
+		}
 	}
 
 	//Get Current Credentials
@@ -254,6 +266,37 @@ func checkProfileExists(credFile *string, profileName *string) (bool, error) {
 	}
 
 	return true, nil
+}
+
+// getConfigProfileValues takes path to the config file and profile name to search for
+// Returns bool and any errors
+func getConfigProfileValues(configFile *string, profileName *string) (*string, *string, error) {
+	var err error
+	config, err := configparser.Read(*configFile)
+	if err != nil {
+		fmt.Println("Could not find config file")
+		fmt.Println(err.Error())
+		return nil, nil, err
+	}
+	section, err := config.Section("profile " + *profileName)
+	if err != nil {
+		fmt.Println("Could not find profile in config file")
+		return nil, nil, err
+	}
+	if !section.Exists("role_arn") {
+		fmt.Println("Config File Not Configured Correctly")
+		err = errors.New("Misconfigured config missing role_arn")
+		return nil, nil, err
+	}
+	if !section.Exists("source_profile") {
+		fmt.Println("Config File Not Configured Correctly")
+		err = errors.New("Misconfigured config missing source_profile")
+		return nil, nil, err
+	}
+	sourceProfile := section.ValueOf("source_profile")
+	roleToAssume := section.ValueOf("role_arn")
+
+	return &sourceProfile, &roleToAssume, nil
 }
 
 // getSTSCredentials takes session, users inputted MFA token, duration, and device serial
