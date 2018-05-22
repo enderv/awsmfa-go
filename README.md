@@ -17,25 +17,45 @@ Enter MFA Token:
 #### Command line Arguments
 Currently supported
 ```
-  c string
-        Full path to credentials file (default "<Users Home>\.aws\credentials")
+  -c string
+        Full path to credentials file (default "~\.aws\credentials")
+  -config-profile string
+        Config Profile To use for assuming role
   -d int
         Token Duration (default 28800)
   -env
-        Boolean flag to print commands to set environment variables
+        Flag to print commands to set environment variables
   -format string
-        Env Printout format if not specified default is bash, possible values are cmd, bash, pwshell (default "bash")
+        Env OS Printout format, possible values are cmd, bash, pwshell (default "bash")
   -i string
         Source Profile (default "identity")
+  -n string
+        Full path to config file (default "~\.aws\config")
   -o    Boolean flag to overwrite profile if this is not set you can not have same source and target profile
   -role-to-assume string
         Full ARN of Role To Assume
   -rotate-identity-keys
         Boolean flag to rotate keys of the source profile when fetching new credentials
   -sessionName string
-        Name for session when assuming role (default "awsmfa2017-10-24")
+        Name for session when assuming role (default "awsmfa<date>")
   -t string
         Destination Profile (default "default")
+  -use-role-config
+        Use config profile for assuming a role
+```
+
+#### Assuming Role Using Config File
+Setup your config file
+```
+[profile test]
+role_arn = bleh
+source_profile = test-mfa
+
+```
+And then run
+```
+awsmfa -use-role-config -config-profile test -t destination-profile
+
 ```
 
 #### Environment Variables
