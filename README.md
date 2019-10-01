@@ -1,3 +1,6 @@
+# No active support
+Just a disclaimer: While I and several others continue to use this day to day this is not really an active project so be warned
+
 # awsmfa-go
 [![Build Status](https://travis-ci.org/enderv/awsmfa-go.svg?branch=master)](https://travis-ci.org/enderv/awsmfa-go)
 
